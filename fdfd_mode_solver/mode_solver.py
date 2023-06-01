@@ -69,9 +69,11 @@ class SlabModeSolver():
         N_ = diags(self.N, offsets=0, shape=(self.Nx, self.Nx))
         # This is valid only because N is a diagonal matrix!
         N2 = (N_**2).tocsc()
+        muZ_inv = diags(1 / muZ.diagonal())
 
-        # A = - muX @ (DHX @ inv(muZ) @ DEX + N2)
-        A = - muX.dot(DHX.dot(inv(muZ)).dot(DEX) + N2)
+        # A = -µX ⋅ DhX / µZ ⋅ DeX + ε
+        A = - muX @ (DHX @ muZ_inv @ DEX + N2)
+        # A = - muX.dot(DHX.dot(muZ_inv).dot(DEX) + N2)
 
         eigvals, eigvecs = eigs(A, k=self.nmodes, sigma=-max(self.ns)**2)
         NEFF = -1j * np.sqrt(eigvals)
@@ -116,8 +118,10 @@ class SlabModeSolver():
         # Make N diagonal
         N_ = diags(self.N, offsets=0, shape=(self.Nx, self.Nx))
         N2 = (N_**2).tocsc()
+        N2_inv = diags(1 / N2.diagonal())
 
-        A = - N2 @ (DEX @ inv(N2) @ DHX + muY)
+        # A = -ε ⋅ DeX / ε ⋅ DhX + µY
+        A = - N2 @ (DEX @ N2_inv @ DHX + muY)
 
         eigenvalues, eigenmodes = eigs(A, k=self.nmodes, sigma=-max(self.ns)**2)
         NEFF = -1j * np.sqrt(eigenvalues)
