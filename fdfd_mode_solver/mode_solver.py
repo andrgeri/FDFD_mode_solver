@@ -5,6 +5,137 @@ from scipy.sparse.linalg import eigs, inv
 from scipy.constants import c, epsilon_0 as ε0, mu_0 as µ0
 
 
+class AbstractSlabMode():
+    def __init__(self, λ: float, x, εr, µr):
+        self.λ = λ
+        self.x = x
+        self.εr = εr
+        self.µr = µr
+
+    def plot_epsilon(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ax.plot(self.x, self.εr)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_xlabel("x")
+        ax.set_ylabel("Relative permittivity ε$_r$")
+
+    def plot_n(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ax.plot(self.x, np.sqrt(self.εr))
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_xlabel("x")
+        ax.set_ylabel("Refractive index $n$")
+
+    def plot_mu(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ax.plot(self.x, self.µr)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_xlabel("x")
+        ax.set_ylabel("Relative permeability µ$_r$")
+
+
+class TESlabMode(AbstractSlabMode):
+    def __init__(self, λ: float, x, εr, µr, neff, Ey, Hx, Hz):
+        super().__init__(λ, x, εr, µr)
+        self.neff = neff
+        self.Ey = Ey
+        self.Hx = Hx
+        self.Hz = Hz
+
+    def plot_Ey(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ϕ = np.abs(self.Ey) / np.max(np.abs(self.Ey))
+        s = f"{self.neff.real:.4f} + j{self.neff.imag:.4f}"
+
+        ax.plot(self.x, ϕ)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_title(r"$n_\mathrm{eff}$ = " + s)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Normalized $E_y$")
+
+    def plot_Hx(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ϕ = np.abs(self.Hx) / np.max(np.abs(self.Hx))
+        s = f"{self.neff.real:.4f} + j{self.neff.imag:.4f}"
+
+        ax.plot(self.x, ϕ)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_title(r"$n_\mathrm{eff}$ = " + s)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Normalized $H_x$")
+
+    def plot_Hz(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ϕ = np.abs(self.Hz) / np.max(np.abs(self.Hz))
+        s = f"{self.neff.real:.4f} + j{self.neff.imag:.4f}"
+
+        ax.plot(self.x, ϕ)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_title(r"$n_\mathrm{eff}$ = " + s)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Normalized $H_z$")
+
+
+class TMSlabMode(AbstractSlabMode):
+    def __init__(self, λ: float, x, εr, µr, neff, Hy, Ex, Ez):
+        super().__init__(λ, x, εr, µr)
+        self.neff = neff
+        self.Hy = Hy
+        self.Ex = Ex
+        self.Ez = Ez
+
+    def plot_Hy(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ϕ = np.abs(self.Hy) / np.max(np.abs(self.Hy))
+        s = f"{self.neff.real:.4f} + j{self.neff.imag:.4f}"
+
+        ax.plot(self.x, ϕ)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_title(r"$n_\mathrm{eff}$ = " + s)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Normalized $H_y$")
+
+    def plot_Ex(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ϕ = np.abs(self.Ex) / np.max(np.abs(self.Ex))
+        s = f"{self.neff.real:.4f} + j{self.neff.imag:.4f}"
+
+        ax.plot(self.x, ϕ)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_title(r"$n_\mathrm{eff}$ = " + s)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Normalized $E_x$")
+
+    def plot_Ez(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots(tight_layout=True)
+
+        ϕ = np.abs(self.Ez) / np.max(np.abs(self.Ez))
+        s = f"{self.neff.real:.4f} + j{self.neff.imag:.4f}"
+
+        ax.plot(self.x, ϕ)
+        ax.set_xlim(self.x.min(), self.x.max())
+        ax.set_title(r"$n_\mathrm{eff}$ = " + s)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Normalized $E_z$")
+
+
 class SlabModeSolver():
 
     def __init__(self, λ: float, ns: list, ts: list, NRES: int):
