@@ -10,11 +10,11 @@ n3 = 1.445  # [-], bottom cladding refractive index
 
 # Thickness of each layer
 b1 = 5 * λ  # top cladding thickness
-b2 = 0.22 * 2  # [µm], core thickness
+b2 = 0.22  # [µm], core thickness
 b3 = 5 * λ  # bottom cladding thickness
 
 # Grid
-NRES = 100  # grid resolution
+NRES = 500  # grid resolution
 dx = λ / NRES  # grid spacing
 
 # Number of modes to calculate
@@ -69,27 +69,19 @@ axs_TM[0].set_ylabel("$H_y$")
 axs_TM[1].set_ylabel("$E_x$")
 axs_TM[2].set_ylabel("$E_z$")
 
-# fig, axs = plt.subplots(nrows=2, sharex=True, tight_layout=True)
-# for i in range(modes):
-#     axs[0].plot(S.x, np.abs(S.te_Ey[:, i] / np.max(np.abs(S.te_Ey[:, i]))))
-#     axs[0].text(S.x.min(), i + 0.1, f"{S.te_neffs[i].real:.3f}")
-#     axs[1].plot(S.x, np.abs(S.tm_Hy[:, i] / np.max(np.abs(S.tm_Hy[:, i]))))
-#     axs[1].text(S.x.min(), i + 0.1, f"{S.tm_neffs[i].real.item():4.3f}")
-
-# Convergence tests wrt to claddings and NRES
-# for NRES in np.arange(100, 1000 + 50):
-#     tora = SlabModeSolver(λ, [n1, n2, n3], [b1, b2, b3], NRES)
-#     # if NRES == 100:
-#     #     print(tora.__dir__())
-#     tora.compute_te_modes()
-#     a.append(NRES)
-#     b.append(tora.neffs[0].real)
+## Convergence tests wrt to claddings and NRES
+# NRES_values = []
+# neff_convergence = []
+# for NRES in np.arange(100, 500 + 50):
+    # S = SlabModeSolver(λ, [n1, n2, n3], [b1, b2, b3], int(NRES))
+    # S.compute_te_modes()
+    # NRES_values.append(NRES)
+    # neff_convergence.append(S.te_neffs[0].real)
 # 
 # fig, ax = plt.subplots(tight_layout=True)
-# ax.plot(a, b)
+# ax.plot(NRES_values, neff_convergence)
 # ax.set_xlabel("NRES")
 # ax.set_ylabel("Neff")
 # ax.set_title("Convergence test")
-plt.show()
 
-    
+plt.show()
