@@ -223,3 +223,38 @@ def n_extraordinary_LiNbO3_Zelmon(λ_):
     B3 = 8.9543 * λ**2 / (λ**2 - 416.08)
     n_e = np.sqrt(A0 + B1 + B2 + B3, dtype=complex)
     return n_e
+
+
+def nGaP_Wei(λ_, Temperature=300):
+    """GaP refractive index model according to [1].
+
+    Parameters
+    ----------
+    λ : float
+        Wavelength in [m] (λ > 0)
+    Temperature : float
+        Temperature in [K]
+
+    Returns
+    -------
+    n + ik : complex
+        Complex refractive index
+
+    References
+    ----------
+    .. [1] J. Wei, J. M. Murray, J. O. Barnes, D. M. Krein, P. G. Schunemann,
+       and S. Guha, "Temperature dependent Sellmeier equation for the
+       refractive index of GaP", Optical Materials Express 8, 485-490 (2018).
+
+    """
+    # T = Temperature + 273.15
+    λ = λ_ * 1e6
+    T = Temperature
+
+    A = 10.926 + 7.0787e-4 * T + 1.8594e-7 * T**2
+    B = 0.53718 + 5.8035e-5 * T + 1.9819e-7 * T**2
+    C = 0.0911014
+    D = 1504 + 0.25935 * T - 0.00023326 * T**2
+    E = 758.048
+    n2 = A + B / (λ**2 - C) + D / (λ**2 - E)
+    return np.sqrt(n2, dtype=complex)

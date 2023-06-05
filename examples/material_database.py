@@ -69,5 +69,18 @@ ax.set_xlabel("Wavelength (µm)")
 ax.set_ylabel("Real refractive index at $T=20$°")
 fig.tight_layout()
 
+# GaP
+λ = np.linspace(0.7e-6, 12.5e-6, 1001)
+Temperatures = [78, 150, 200, 250, 300, 350, 400, 450]  # [K]
+
+fig, ax = plt.subplots(tight_layout=True)
+for T in Temperatures:
+    n = nGaP_Wei(λ, T)
+    ax.plot(λ * 1e6, n.real, label=f"T = {T}K")
+ax.set_xlabel("Wavelength (µm)")
+ax.set_ylabel("GaP refractive index")
+ax.legend()
+ax.set_xlim(0.7, 12.5)
+ax.set_ylim(2.90, 3.25)
 
 plt.show()
