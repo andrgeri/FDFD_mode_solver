@@ -258,3 +258,50 @@ def nGaP_Wei(λ_, Temperature=300):
     E = 758.048
     n2 = A + B / (λ**2 - C) + D / (λ**2 - E)
     return np.sqrt(n2, dtype=complex)
+
+
+def nAl2O3_Malitson(λ_):
+    # I. H. Malitson and M. J. Dodge, J. Opt. Soc. Am. 62, 1405 (1972)
+    # From 200 nm to 5000 nm
+    λ = λ_ * 1e6
+    A0 = 1
+    B1 = 1.4313493
+    C1 = 0.0726631
+    B2 = 0.65054713
+    C2 = 0.1193242
+    B3 = 5.3414021
+    C3 = 18.028251
+
+    e = A0 + B1 / (1 - C1 / λ**2) + B2 / (1 - C2 / λ**2) + B3 / (1 - C3 / λ**2)
+    return np.sqrt(e, dtype=complex)
+
+
+def nGe_Burnett():
+    # J. H. Burnett, S. G. Kaplan, E. Stover, A. Phenis. Refractive index measurements of Ge, Proc. SPIE 9974, 99740X (2016)
+    # From 2000 nm to 14000 nm
+    pass
+
+
+def nAir_Ciddor(λ_):
+    # P. E. Ciddor, Appl. Opt. 35, 1566 (1996).
+    # From 230 nm to 1690 nm
+    λ = λ_ * 1e6
+    n = 1 + 0.05792105 / (238.0185 - λ**(-2)) + 0.00167917 / (57.362 - λ**(-2))
+    return n
+
+
+def nSi_Tatian(λ_):
+    # B. Tatian, Appl. Opt. 23, 4477 (1984).
+    # From 1357 nm to 11040 nm @ 26 deg C
+
+    λ = λ_ * 1e6
+    A0 = 1
+    B1 = 10.6684293
+    C1 = 0.301516485
+    B2 = 0.0030434748
+    C2 = 1.13475115
+    B3 = 1.54133408
+    C3 = 1104
+
+    e = A0 + B1 / (1 - C1 / λ**2) + B2 / (1 - C2 / λ**2) + B3 / (1 - C3 / λ**2)
+    return np.sqrt(e, dtype=complex)
