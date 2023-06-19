@@ -3,14 +3,15 @@ import matplotlib.pyplot as plt
 from scipy.sparse import diags, eye
 from scipy.sparse.linalg import eigs, inv
 from scipy.constants import c, epsilon_0 as ε0, mu_0 as µ0
+from dataclasses import dataclass
 
 
+@dataclass
 class AbstractSlabMode():
-    def __init__(self, λ: float, x, εr, µr):
-        self.λ = λ
-        self.x = x
-        self.εr = εr
-        self.µr = µr
+    λ: float
+    x: np.ndarray
+    εr: np.ndarray
+    µr: np.ndarray
 
     def plot_epsilon(self, ax=None):
         if ax is None:
@@ -40,13 +41,14 @@ class AbstractSlabMode():
         ax.set_ylabel("Relative permeability µ$_r$")
 
 
+@dataclass
 class TESlabMode(AbstractSlabMode):
-    def __init__(self, λ: float, x, εr, µr, neff, Ey, Hx, Hz):
-        super().__init__(λ, x, εr, µr)
-        self.neff = neff
-        self.Ey = Ey
-        self.Hx = Hx
-        self.Hz = Hz
+    neff: complex
+    Ey: np.ndarray
+    Hx: np.ndarray
+    Hz: np.ndarray
+    Hx_stag: np.ndarray
+    Hz_stag: np.ndarray
 
     def plot_Ey(self, ax=None):
         if ax is None:
@@ -88,13 +90,14 @@ class TESlabMode(AbstractSlabMode):
         ax.set_ylabel("Normalized $H_z$")
 
 
+@dataclass
 class TMSlabMode(AbstractSlabMode):
-    def __init__(self, λ: float, x, εr, µr, neff, Hy, Ex, Ez):
-        super().__init__(λ, x, εr, µr)
-        self.neff = neff
-        self.Hy = Hy
-        self.Ex = Ex
-        self.Ez = Ez
+    neff: complex
+    Hy: np.ndarray
+    Ex: np.ndarray
+    Ez: np.ndarray
+    Ex_stag: np.ndarray
+    Ez_stag: np.ndarray
 
     def plot_Hy(self, ax=None):
         if ax is None:
@@ -162,33 +165,33 @@ class SlabModeSolver():
         self.Nx = int(np.ceil(Sx / self.dx))
         Sx = self.Nx * self.dx
         x = np.arange(0.5, self.Nx - 0.5 + 1, 1) * self.dx
-        self.x = x - np.mean(x)
+        x = x - np.mean(x)
 
         # Build refractive index profile N
-        self.N = np.empty(self.Nx)
+        N = np.empty(self.Nx)
         tmp = x.min()
         for t_, n_ in zip(self.ts, self.ns):
             idx = np.where((x >= tmp) & (x <= tmp + t_))
-            self.N[idx] = n_
+            N[idx] = n_
             tmp += t_
         # self.N = np.flip(self.N)  # NOT NEEDED
 
-        return self.x, self.N
+        return x, N
 
     def compute_te_modes(self, nmodes=1):
         if not isinstance(nmodes, int) or nmodes <= 0:
             raise TypeError("The number of modes must be a positive integer")
         self.nmodes = nmodes
 
-        self.compute_grid()
+        x, N = self.compute_grid()
 
         # Calculate k0
-        self.k0 = 2 * np.pi / self.λ
+        k0 = 2 * np.pi / self.λ
 
         # Build derivative matrix on Yee's grid
         offsets = [0, 1]
         DEX = diags([-1, 1], offsets=offsets, shape=(self.Nx, self.Nx))
-        DEX /= (self.k0 * self.dx)
+        DEX /= (k0 * self.dx)
         DHX = (- DEX.T)
 
         # Magnetic permeability
@@ -197,7 +200,7 @@ class SlabModeSolver():
         muZ = muX
 
         # Make N diagonal
-        N_ = diags(self.N, offsets=0, shape=(self.Nx, self.Nx))
+        N_ = diags(N, offsets=0, shape=(self.Nx, self.Nx))
         # This is valid only because N is a diagonal matrix!
         N2 = (N_**2).tocsc()
         muZ_inv = diags(1 / muZ.diagonal())
@@ -209,36 +212,48 @@ class SlabModeSolver():
         eigvals, eigvecs = eigs(A, k=self.nmodes, sigma=-max(self.ns)**2)
         NEFF = -1j * np.sqrt(eigvals)
         # Sort modes wrt their effective index
-        ind = np.argsort(np.real(NEFF))
+        ind = np.argsort(-np.real(NEFF))
         MODE = eigvecs[:, ind]
         NEFF = NEFF[ind]
 
-        self.te_neffs = NEFF
-        self.te_Ey = MODE
-        self.te_Hx = np.empty(self.te_Ey.shape, dtype=complex)
-        self.te_Hz = np.empty(self.te_Ey.shape, dtype=complex)
+        self.TE_modes = []
         for i in range(self.nmodes):
             # self.te_Hx[:, i] = -self.te_neffs[i] * np.sqrt(ε0 / µ0) * inv(N2) @ self.te_Ey[:, i]
             # self.te_Hz[:, i] = 1j * self.λ / (2 * np.pi * c / µ0) * inv(muX) * np.gradient(self.te_Ey[:, i], self.x)
-            self.te_Hx[:, i] = inv(N2) @ self.te_Ey[:, i]
-            self.te_Hz[:, i] = inv(muX) * np.gradient(self.te_Ey[:, i], self.x)
 
-        return self.te_neffs, self.te_Ey, self.te_Hx, self.te_Hz
+            # On staggered grid
+            Hx_ = inv(N2) @ MODE[:, i]
+            Hz_ = inv(muX) * np.gradient(MODE[:, i], x)
+
+            # On collocated grid (linear interpolation)
+            Hx = np.pad(np.copy(Hx_), 1, 'constant', constant_values=0)
+            Hz = np.pad(np.copy(Hz_), 1, 'constant', constant_values=0)
+            Hx[0:-1] += Hx[1:]
+            Hx[0:-1] += Hx[1:]
+            Hz[0:-1] += Hz[1:]
+            Hz[0:-1] += Hz[1:]
+            Hx = 0.5 * Hx[1:-1]
+            Hz = 0.5 * Hz[1:-1]
+
+            tmp = TESlabMode(self.λ, x, N**2, muX, NEFF[i], MODE[:, i], Hx, Hz, Hx_, Hz_)
+            self.TE_modes.append(tmp)
+
+        return self.TE_modes
 
     def compute_tm_modes(self, nmodes=1):
         if not isinstance(nmodes, int) or nmodes <= 0:
             raise TypeError("The number of modes must be a positive integer")
         self.nmodes = nmodes
 
-        self.compute_grid()
+        x, N = self.compute_grid()
 
         # Calculate k0
-        self.k0 = 2 * np.pi / self.λ
+        k0 = 2 * np.pi / self.λ
 
         # Build derivative matrix on Yee's grid
         offsets = [0, 1]
         DEX = diags([-1, 1], offsets=offsets, shape=(self.Nx, self.Nx))
-        DEX /= (self.k0 * self.dx)
+        DEX /= (k0 * self.dx)
         DHX = (- DEX.T)
 
         # Magnetic permeability
@@ -247,7 +262,7 @@ class SlabModeSolver():
         muZ = muX
 
         # Make N diagonal
-        N_ = diags(self.N, offsets=0, shape=(self.Nx, self.Nx))
+        N_ = diags(N, offsets=0, shape=(self.Nx, self.Nx))
         N2 = (N_**2).tocsc()
         N2_inv = diags(1 / N2.diagonal())
 
@@ -256,22 +271,32 @@ class SlabModeSolver():
 
         eigenvalues, eigenmodes = eigs(A, k=self.nmodes, sigma=-max(self.ns)**2)
         NEFF = -1j * np.sqrt(eigenvalues)
-        # Sort modes wrt their effective index
-        ind = np.argsort(np.real(NEFF))
+        # Eigenvalues in descending order
+        ind = np.argsort(-np.real(NEFF))
         MODE = eigenmodes[:, ind]
         NEFF = NEFF[ind]
 
-        # Eigenvalues in descending order
-        self.tm_neffs = NEFF
-        self.tm_Hy = MODE
-        self.tm_Ex = np.empty(self.tm_Hy.shape, dtype=complex)
-        self.tm_Ez = np.empty(self.tm_Hy.shape, dtype=complex)
-
+        self.TM_modes = []
         # Missing prefactors!
         for i in range(self.nmodes):
             # self.tm_Ex[:, i] = (self.tm_neffs[i] / c / ε0) * inv(N2) @ self.tm_Hy[:, i]
             # self.tm_Ez[:, i] = 1j * self.λ / (2 * np.pi * c / ε0) * inv(N2) @ np.gradient(self.tm_Hy[:, i], self.x)
-            self.tm_Ex[:, i] = inv(N2) @ self.tm_Hy[:, i]
-            self.tm_Ez[:, i] = inv(N2) @ np.gradient(self.tm_Hy[:, i], self.x)
 
-        return self.tm_neffs, self.tm_Hy, self.tm_Ex, self.tm_Ez
+            # On staggered grid
+            Ex_ = inv(N2) @ MODE[:, i]
+            Ez_ = inv(N2) @ np.gradient(MODE[:, i], x)
+
+            # On collocated grid (linear interpolation)
+            Ex = np.pad(np.copy(Ex_), 1, 'constant', constant_values=0)
+            Ez = np.pad(np.copy(Ez_), 1, 'constant', constant_values=0)
+            Ex[0:-1] += Ex[1:]
+            Ex[0:-1] += Ex[1:]
+            Ez[0:-1] += Ez[1:]
+            Ez[0:-1] += Ez[1:]
+            Ex = 0.5 * Ex[1:-1]
+            Ez = 0.5 * Ez[1:-1]
+
+            tmp = TMSlabMode(self.λ, x, N**2, muX, NEFF[i], MODE[:, i], Ex, Ez, Ex_, Ez_)
+            self.TM_modes.append(tmp)
+
+        return self.TM_modes
